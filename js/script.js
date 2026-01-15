@@ -259,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CONFIGURATION ---
     const API_BASE_URL = 'https://booking-backend-3nvh.onrender.com';
+    let slotsCache = {}; // Simple in-memory cache
 
     const TIME_SLOTS = [
         "09:00", "10:00", "11:00", "12:00", "13:00", "14:00",
@@ -320,10 +321,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Check Cache
+        if (slotsCache[selectedDate]) {
+            renderSlots(slotsCache[selectedDate].availableSlots, slotsCache[selectedDate].breakSlots || [], lang);
+            return;
+        }
+
         // Clear previous selection
         timeHiddenInput.value = '';
 
-        // Show loading with spinner
+        // Show loading with spinner (only if not cached)
         const loadingText = translations[lang].msgChecking;
         timeSlotsContainer.innerHTML = `
             <div class="slot-loading">
@@ -341,19 +348,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            renderSlots(data.availableSlots || [], lang);
+
+            // Update Cache
+            slotsCache[selectedDate] = {
+                availableSlots: data.availableSlots || [],
+                breakSlots: data.breakSlots || []
+            };
+
+            renderSlots(data.availableSlots || [], data.breakSlots || [], lang);
 
         } catch (e) {
             console.error("Network Error:", e);
             const errorMsg = lang === 'ar' ? 'فشل الاتصال بالخادم' : 'Connection Failed';
             timeSlotsContainer.innerHTML = `<p class="slot-loading error">⚠️ ${errorMsg}</p>`;
-            // We don't toast here to avoid spamming user on load, just inline error
         }
     }
 
-    function renderSlots(availableSlots, lang) {
+    function renderSlots(availableSlots, breakSlots, lang) {
         if (!timeSlotsContainer) return;
         timeSlotsContainer.innerHTML = '';
+
+        const isFullyBooked = availableSlots.length === 0;
+        // Don't show fully booked if there are breaks (technically breaks aren't "booked") 
+        // but for user purpose, if no available slots, it is fully booked.
 
         if (availableSlots.length === 0) {
             timeSlotsContainer.innerHTML = `<p class="slot-loading error" data-i18n="msgFullyBooked">${translations[lang].msgFullyBooked}</p>`;
@@ -380,6 +397,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.style.transform = 'scale(0.95)';
                     setTimeout(() => this.style.transform = '', 100);
                 };
+            } else if (breakSlots && breakSlots.includes(slot)) {
+                // BREAK -> YELLOW
+                btn.classList.add('break');
+                btn.title = lang === 'ar' ? 'استراحة' : 'Break';
+                btn.innerHTML = `<span>${slot}</span>`;
             } else {
                 // UNAVAILABLE -> RED
                 btn.classList.add('booked');
@@ -509,12 +531,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     showToast(lang === 'ar' ? 'نجاح' : 'Success', translations[lang].successTitle, 'success');
 
-                    // Refresh slots
+                    // Refresh slots and clear cache
+                    slotsCache = {};
                     checkAvailability();
 
                 } else if (response.status === 409) {
                     // Conflict
-                    const errorMsg = result.error || (lang === 'ar' ? 'هذا الموعد محجوز مسبقاً' : 'This slot is already booked');
+                    let errorMsg;
+                    if (result.existingTime) {
+                        errorMsg = lang === 'ar'
+                            ? `لديك حجز مسبق اليوم الساعة ${result.existingTime}`
+                            : `You already booked today at ${result.existingTime}`;
+                    } else {
+                        errorMsg = result.error || (lang === 'ar' ? 'هذا الموعد محجوز ط مسبقاً' : 'This slot is already booked');
+                    }
+
+                    // Clear Cache on conflict to force refresh
+                    slotsCache = {};
+
                     showToast(lang === 'ar' ? 'خطأ' : 'Error', errorMsg, 'error');
 
                     submitBtn.disabled = false;

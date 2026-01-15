@@ -982,3 +982,14 @@ h6 {
         transform: rotate(360deg);
     }
 }
+/* BREAK STATE (Yellow) */
+.time-slot.break {
+    background: rgba(244, 196, 48, 0.1);
+    border-color: rgba(244, 196, 48, 0.4);
+    color: var(--gold-primary);
+    cursor: not-allowed;
+    opacity: 0.9;
+}
+.time-slot.break:hover {
+    background: rgba(244, 196, 48, 0.2);
+}

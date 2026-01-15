@@ -9,8 +9,8 @@ const getAvailableSlots = async (req, res) => {
             return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
         }
 
-        const slots = await appointmentService.getAvailableSlots(date);
-        res.json({ date, availableSlots: slots });
+        const result = await appointmentService.getAvailableSlots(date);
+        res.json({ date, availableSlots: result.availableSlots, breakSlots: result.breakSlots });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -52,8 +52,14 @@ const bookAppointment = async (req, res) => {
         if (error.message === 'Time slot already booked') {
             return res.status(409).json({ error: 'This time slot is already booked.' });
         }
-        if (error.message === 'Customer already has a booking for this date') {
-            return res.status(409).json({ error: 'You can only book one appointment per day.' });
+        if (error.code === 'daily_limit') {
+            return res.status(409).json({
+                error: 'You can only book one appointment per day.',
+                existingTime: error.existingTime
+            });
+        }
+        if (error.message === 'This time slot is a break') {
+            return res.status(400).json({ error: 'This time slot is a scheduled break.' });
         }
         res.status(500).json({ error: 'Internal Server Error' });
     }

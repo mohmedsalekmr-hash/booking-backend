@@ -5,6 +5,8 @@ const WORKING_HOURS = {
     end: 22   // 10 PM (Loop goes < 22, so last slot is 21:00)
 };
 
+const BREAK_SLOTS = ["15:00"];
+
 // Generate fixed hourly slots
 const generateSlots = () => {
     const slots = [];
@@ -42,8 +44,14 @@ const getAvailableSlots = (date) => {
                 });
             }
 
-            const availableSlots = allSlots.filter(slot => !bookedTimes.includes(slot));
-            resolve(availableSlots);
+            // Exclude Breaks from Available, but return them separately
+            const breakSlots = BREAK_SLOTS;
+
+            const availableSlots = allSlots.filter(slot =>
+                !bookedTimes.includes(slot) && !breakSlots.includes(slot)
+            );
+
+            resolve({ availableSlots, breakSlots, bookedTimes });
         });
     });
 };
@@ -59,9 +67,9 @@ const checkDoubleBooking = (date, time) => {
 
 const checkDailyLimit = (phone, date) => {
     return new Promise((resolve, reject) => {
-        db.get('SELECT id FROM appointments WHERE phone_number = ? AND date = ?', [phone, date], (err, row) => {
+        db.get('SELECT id, time FROM appointments WHERE phone_number = ? AND date = ?', [phone, date], (err, row) => {
             if (err) return reject(err);
-            resolve(!!row);
+            resolve(row); // Return full row or null
         });
     });
 };
@@ -69,15 +77,23 @@ const checkDailyLimit = (phone, date) => {
 const createAppointment = async (bookingData) => {
     const { customer_name, phone_number, service_name, date, time } = bookingData;
 
+    // Check Break
+    if (BREAK_SLOTS.includes(time)) {
+        throw new Error('This time slot is a break');
+    }
+
     // These checks are usually done by the controller or previous steps, but good to have here
     const isBooked = await checkDoubleBooking(date, time);
     if (isBooked) {
         throw new Error('Time slot already booked');
     }
 
-    const hasBookingToday = await checkDailyLimit(phone_number, date);
-    if (hasBookingToday) {
-        throw new Error('Customer already has a booking for this date');
+    const existingBooking = await checkDailyLimit(phone_number, date);
+    if (existingBooking) {
+        const error = new Error('Customer already has a booking for this date');
+        error.code = 'daily_limit';
+        error.existingTime = existingBooking.time;
+        throw error;
     }
 
     return new Promise((resolve, reject) => {
