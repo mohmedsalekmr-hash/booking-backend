@@ -7,6 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const appointmentRoutes = require('./routes/appointmentRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 app.use(cors());
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use(express.json());
 console.log("Loading appointmentRoutes:", appointmentRoutes);
 
 app.use('/', appointmentRoutes);
+app.use('/', settingsRoutes);
 
 // Helper to list all routes
 const getRoutes = () => {

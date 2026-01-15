@@ -1,59 +1,75 @@
 const db = require('../config/database');
+const settingsService = require('./settingsService');
 
-const WORKING_HOURS = {
-    start: 9, // 9 AM
-    end: 22   // 10 PM (Loop goes < 22, so last slot is 21:00)
-};
-
-const BREAK_SLOTS = ["15:00"];
-
-// Generate fixed hourly slots
-const generateSlots = () => {
+// Helper to generate slots
+const generateSlots = (startStr, endStr, durationMins) => {
     const slots = [];
-    for (let i = WORKING_HOURS.start; i < WORKING_HOURS.end; i++) {
-        const hour = i < 10 ? `0${i}` : i;
-        slots.push(`${hour}:00`);
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+
+    let current = new Date(2000, 0, 1, startH, startM);
+    const end = new Date(2000, 0, 1, endH, endM);
+
+    while (current < end) {
+        const h = current.getHours().toString().padStart(2, '0');
+        const m = current.getMinutes().toString().padStart(2, '0');
+        slots.push(`${h}:${m}`);
+        current.setMinutes(current.getMinutes() + durationMins);
     }
     return slots;
 };
 
-const getAvailableSlots = (date) => {
-    return new Promise((resolve, reject) => {
-        // Get all booked times for the date
-        db.all('SELECT time FROM appointments WHERE date = ?', [date], (err, rows) => {
-            if (err) {
-                return reject(err);
-            }
-            const bookedTimes = rows.map(row => row.time);
-            let allSlots = generateSlots();
+const getAvailableSlots = async (date) => {
+    try {
+        const settings = await settingsService.getSettings();
+        const startStr = settings.opening_time || '09:00';
+        const endStr = settings.closing_time || '23:00';
+        const breakStart = settings.break_start || '15:00';
+        const breakEnd = settings.break_end || '16:00';
+        const duration = parseInt(settings.slot_duration || '60');
 
-            // Filter past times if date is today
-            // Assuming Server Time (UTC) matches Shop Time (GMT/MRU)
-            const todayStr = new Date().toISOString().split('T')[0];
+        const allSlots = generateSlots(startStr, endStr, duration);
 
-            if (date === todayStr) {
-                const now = new Date();
-                const currentHour = now.getUTCHours();
-                const currentMin = now.getUTCMinutes();
-
-                allSlots = allSlots.filter(slot => {
-                    const [slotHour, slotMin] = slot.split(':').map(Number);
-                    if (slotHour < currentHour) return false;
-                    if (slotHour === currentHour && slotMin < currentMin) return false;
-                    return true;
-                });
-            }
-
-            // Exclude Breaks from Available, but return them separately
-            const breakSlots = BREAK_SLOTS;
-
-            const availableSlots = allSlots.filter(slot =>
-                !bookedTimes.includes(slot) && !breakSlots.includes(slot)
-            );
-
-            resolve({ availableSlots, breakSlots, bookedTimes });
+        // Get Bookings
+        const rows = await new Promise((resolve, reject) => {
+            db.all('SELECT time FROM appointments WHERE date = ?', [date], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
         });
-    });
+        const bookedTimes = rows.map(r => r.time);
+
+        // Filter Past Time if Today
+        const todayStr = new Date().toISOString().split('T')[0];
+        let validSlots = allSlots;
+
+        if (date === todayStr) {
+            const now = new Date();
+            const currentHour = now.getUTCHours();
+            const currentMin = now.getUTCMinutes();
+
+            validSlots = validSlots.filter(slot => {
+                const [h, m] = slot.split(':').map(Number);
+                if (h < currentHour) return false;
+                if (h === currentHour && m < currentMin) return false;
+                return true;
+            });
+        }
+
+        // Identify Break Slots
+        const break_slots = validSlots.filter(slot => slot >= breakStart && slot < breakEnd);
+
+        // Available = Valid - Booked - Breaks
+        const availableSlots = validSlots.filter(slot =>
+            !bookedTimes.includes(slot) &&
+            !break_slots.includes(slot)
+        );
+
+        return { availableSlots, breakSlots: break_slots, bookedTimes };
+
+    } catch (error) {
+        throw error;
+    }
 };
 
 const checkDoubleBooking = (date, time) => {
@@ -69,7 +85,7 @@ const checkDailyLimit = (phone, date) => {
     return new Promise((resolve, reject) => {
         db.get('SELECT id, time FROM appointments WHERE phone_number = ? AND date = ?', [phone, date], (err, row) => {
             if (err) return reject(err);
-            resolve(row); // Return full row or null
+            resolve(row);
         });
     });
 };
@@ -77,12 +93,16 @@ const checkDailyLimit = (phone, date) => {
 const createAppointment = async (bookingData) => {
     const { customer_name, phone_number, service_name, date, time } = bookingData;
 
-    // Check Break
-    if (BREAK_SLOTS.includes(time)) {
+    // Validate against Settings
+    const settings = await settingsService.getSettings();
+    const breakStart = settings.break_start || '15:00';
+    const breakEnd = settings.break_end || '16:00';
+
+    if (time >= breakStart && time < breakEnd) {
         throw new Error('This time slot is a break');
     }
 
-    // These checks are usually done by the controller or previous steps, but good to have here
+    // Check Double Booking
     const isBooked = await checkDoubleBooking(date, time);
     if (isBooked) {
         throw new Error('Time slot already booked');
@@ -103,7 +123,7 @@ const createAppointment = async (bookingData) => {
     `);
 
         stmt.run([customer_name, phone_number, service_name, date, time], function (err) {
-            stmt.finalize(); // Finalize AFTER execution to avoid race conditions
+            stmt.finalize();
             if (err) return reject(err);
             resolve({ id: this.lastID, ...bookingData });
         });
@@ -124,7 +144,6 @@ const getDailyReport = (date) => {
 // Get ALL appointments (for Admin)
 const getAllAppointments = () => {
     return new Promise((resolve, reject) => {
-        // Limit to reasonable amount? user asked for all. let's return all.
         const query = `SELECT * FROM appointments ORDER BY date DESC, time ASC`;
         db.all(query, [], (err, rows) => {
             if (err) return reject(err);
