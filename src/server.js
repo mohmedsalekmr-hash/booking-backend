@@ -42,7 +42,7 @@ app.get('/debug-routes', (req, res) => {
 
 // Basic health check route
 app.get('/health', (req, res) => {
-    res.send('Appointment Booking API is running (v2.0 - Debug Mode)');
+    res.send('Appointment Booking API is running (v3.0 - Toast UX)');
 });
 
 app.listen(PORT, () => {
