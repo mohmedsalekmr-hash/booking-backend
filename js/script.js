@@ -441,11 +441,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error("No Internet Connection");
                 }
 
+                // Timeout Controller (15 seconds)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+
                 const response = await fetch(`${API_BASE_URL}/book-appointment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bookingData)
+                    body: JSON.stringify(bookingData),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId); // Clear timeout on response
 
                 const result = await response.json();
 
@@ -485,6 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (errorMsg === 'Failed to fetch' || errorMsg === 'No Internet Connection') {
                     errorMsg = lang === 'ar' ? 'فشل الاتصال بالإنترنت. تحقق من الشبكة.' : 'No internet connection. Please check your network.';
+                } else if (error.name === 'AbortError') {
+                    errorMsg = lang === 'ar' ? 'انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.' : 'Request timed out. Please try again.';
                 } else if (errorMsg.includes('Server Error')) {
                     errorMsg = lang === 'ar' ? 'خطأ في الخادم.' : 'Server error. Please try again.';
                 }

@@ -87,10 +87,10 @@ const createAppointment = async (bookingData) => {
     `);
 
         stmt.run([customer_name, phone_number, service_name, date, time], function (err) {
+            stmt.finalize(); // Finalize AFTER execution to avoid race conditions
             if (err) return reject(err);
             resolve({ id: this.lastID, ...bookingData });
         });
-        stmt.finalize();
     });
 };
 
