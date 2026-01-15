@@ -1,17 +1,16 @@
 const db = require('../config/database');
 
 const WORKING_HOURS = {
-    start: 10, // 10 AM
-    end: 19    // 7 PM
+    start: 9, // 9 AM
+    end: 22   // 10 PM (Loop goes < 22, so last slot is 21:00)
 };
 
-// Generate fixed hourly slots for simplicity
+// Generate fixed hourly slots
 const generateSlots = () => {
     const slots = [];
     for (let i = WORKING_HOURS.start; i < WORKING_HOURS.end; i++) {
         const hour = i < 10 ? `0${i}` : i;
         slots.push(`${hour}:00`);
-        // Optional: Add half-hour slots e.g. `${hour}:30`
     }
     return slots;
 };
@@ -24,7 +23,25 @@ const getAvailableSlots = (date) => {
                 return reject(err);
             }
             const bookedTimes = rows.map(row => row.time);
-            const allSlots = generateSlots();
+            let allSlots = generateSlots();
+
+            // Filter past times if date is today
+            // Assuming Server Time (UTC) matches Shop Time (GMT/MRU)
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            if (date === todayStr) {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMin = now.getMinutes();
+
+                allSlots = allSlots.filter(slot => {
+                    const [slotHour, slotMin] = slot.split(':').map(Number);
+                    if (slotHour < currentHour) return false;
+                    if (slotHour === currentHour && slotMin < currentMin) return false;
+                    return true;
+                });
+            }
+
             const availableSlots = allSlots.filter(slot => !bookedTimes.includes(slot));
             resolve(availableSlots);
         });
