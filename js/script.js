@@ -244,6 +244,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeHiddenInput = document.getElementById('time');
     const timeSlotsContainer = document.getElementById('time-slots-container');
 
+    // --- TOAST NOTIFICATION SYSTEM ---
+    function showToast(title, message, type = 'info') {
+        let container = document.querySelector('.toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        let icon = 'ℹ️';
+        if (type === 'success') icon = '✅';
+        if (type === 'error') icon = '❌';
+
+        toast.innerHTML = `
+            <div class="toast-icon">${icon}</div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-msg">${message}</div>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Animate In
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Remove after 5s
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }, 5000);
+    }
+
     if (dateInput && timeSlotsContainer) {
         // Initialize Date
         const todayStr = new Date().toISOString().split('T')[0];
@@ -268,28 +308,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Clear previous selection
             timeHiddenInput.value = '';
-            // Show loading
-            timeSlotsContainer.innerHTML = `<p class="slot-loading" data-i18n="msgChecking">${translations[lang].msgChecking}</p>`;
+
+            // Show loading with spinner
+            const loadingText = translations[lang].msgChecking;
+            timeSlotsContainer.innerHTML = `
+                <div class="slot-loading">
+                    <div class="spinner slot-spinner"></div>
+                    <div style="margin-top: 10px;">${loadingText}</div>
+                </div>
+            `;
 
             try {
                 // Fetch available slots from backend
                 const response = await fetch(`${API_BASE_URL}/available-slots?date=${selectedDate}`);
-                const data = await response.json();
 
-                if (response.ok) {
-                    renderSlots(data.availableSlots || [], lang);
-                } else {
-                    console.error("API Error:", data.error);
-                    timeSlotsContainer.innerHTML = `<p class="slot-loading error">Error loading slots</p>`;
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
                 }
+
+                const data = await response.json();
+                renderSlots(data.availableSlots || [], lang);
+
             } catch (e) {
                 console.error("Network Error:", e);
-                timeSlotsContainer.innerHTML = `<p class="slot-loading error">Connection Error</p>`;
+                const errorMsg = lang === 'ar' ? 'فشل الاتصال بالخادم' : 'Connection Failed';
+                timeSlotsContainer.innerHTML = `<p class="slot-loading error">⚠️ ${errorMsg}</p>`;
+                // We don't toast here to avoid spamming user on load, just inline error
             }
         }
 
         function renderSlots(availableSlots, lang) {
             timeSlotsContainer.innerHTML = '';
+
+            if (availableSlots.length === 0) {
+                timeSlotsContainer.innerHTML = `<p class="slot-loading error" data-i18n="msgFullyBooked">${translations[lang].msgFullyBooked}</p>`;
+                return;
+            }
 
             TIME_SLOTS.forEach(slot => {
                 const btn = document.createElement('div');
@@ -297,7 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.textContent = slot;
 
                 // Check if slot is in available list
-                // The API returns ["10:00", "11:00"] etc.
                 if (availableSlots.includes(slot)) {
                     // AVAILABLE -> GREEN
                     btn.classList.add('available');
@@ -307,13 +360,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         this.classList.add('selected');
                         timeHiddenInput.value = slot;
-                        console.log("Selected:", slot);
+
+                        // Visual feedback
+                        this.style.transform = 'scale(0.95)';
+                        setTimeout(() => this.style.transform = '', 100);
                     };
                 } else {
                     // UNAVAILABLE -> RED
                     btn.classList.add('booked');
                     btn.title = translations[lang].msgBookedTitle;
-                    btn.innerHTML = `<span>${slot}</span>`; // Could add cross icon here
+                    btn.innerHTML = `<span>${slot}</span>`;
                 }
                 timeSlotsContainer.appendChild(btn);
             });
@@ -341,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 timeSlotsContainer.classList.add('input-error');
                 setTimeout(() => { timeSlotsContainer.classList.remove('input-error'); }, 500);
                 timeSlotsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast(lang === 'ar' ? 'تنبيه' : 'Alert', msg, 'info');
                 return;
             }
 
@@ -364,8 +421,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. SUBMIT TO BACKEND
             const submitBtn = bookingForm.querySelector('.submit-btn');
             const originalBtnText = submitBtn.textContent;
+
+            // Disable Button & Show Spinner
             submitBtn.disabled = true;
-            submitBtn.textContent = lang === 'ar' ? '...جاري الحجز' : 'Booking...';
+            submitBtn.innerHTML = `<div class="spinner"></div> ${lang === 'ar' ? 'جاري الحجز...' : 'Booking...'}`;
 
             const formData = new FormData(bookingForm);
             const bookingData = {
@@ -373,11 +432,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 phone_number: formData.get('phone'),
                 service_name: formData.get('service'),
                 date: formData.get('date'),
-                time: formData.get('time'),
-                // notes: formData.get('notes') // Backend doesn't store notes yet in DB schema, but we can send it
+                time: formData.get('time')
             };
 
             try {
+                // Network Checks
+                if (!navigator.onLine) {
+                    throw new Error("No Internet Connection");
+                }
+
                 const response = await fetch(`${API_BASE_URL}/book-appointment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -392,28 +455,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     bookingSuccess.style.display = 'block';
                     bookingSuccess.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                    // Refresh slots to mark this one as taken immediately visualy if user stays
+                    showToast(lang === 'ar' ? 'نجاح' : 'Success', translations[lang].successTitle, 'success');
+
+                    // Refresh slots
                     checkAvailability();
 
                 } else if (response.status === 409) {
-                    // Conflict (Double Booking or Limit)
-                    alert(result.error);
+                    // Conflict
+                    const errorMsg = result.error || (lang === 'ar' ? 'هذا الموعد محجوز مسبقاً' : 'This slot is already booked');
+                    showToast(lang === 'ar' ? 'خطأ' : 'Error', errorMsg, 'error');
+
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalBtnText;
 
-                    // Specific handling: refresh slots if it was "Time slot already booked"
-                    if (result.error.includes('booked')) {
+                    if (result.error && result.error.includes('booked')) {
                         checkAvailability();
                     }
 
                 } else {
-                    // Generic Error
-                    throw new Error(result.error || "Unknown Error");
+                    // Generic Server Error
+                    throw new Error(result.error || `Server Error (${response.status})`);
                 }
 
             } catch (error) {
                 console.error('Submission Error:', error);
-                alert(lang === 'ar' ? 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.' : 'Connection Error. Please try again.');
+
+                let errorTitle = lang === 'ar' ? 'خطأ' : 'Error';
+                let errorMsg = error.message;
+
+                if (errorMsg === 'Failed to fetch' || errorMsg === 'No Internet Connection') {
+                    errorMsg = lang === 'ar' ? 'فشل الاتصال بالإنترنت. تحقق من الشبكة.' : 'No internet connection. Please check your network.';
+                } else if (errorMsg.includes('Server Error')) {
+                    errorMsg = lang === 'ar' ? 'خطأ في الخادم.' : 'Server error. Please try again.';
+                }
+
+                showToast(errorTitle, errorMsg, 'error');
+
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText;
             }
@@ -439,7 +516,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const phoneError = document.getElementById('phone-error');
             if (phoneInput) phoneInput.classList.remove('error');
             if (phoneError) phoneError.style.display = 'none';
-            checkAvailability(); // Refresh slots for today
+
+            // Refresh slots
+            checkAvailability();
         });
     }
 
