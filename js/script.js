@@ -218,6 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function setLanguage(lang) {
+        // Update Flatpickr Locale if exists
+        const dateInput = document.getElementById('date');
+        if (dateInput && dateInput._flatpickr) {
+            dateInput._flatpickr.set('locale', lang === 'ar' ? 'ar' : 'default');
+        }
+
         htmlElement.setAttribute('lang', lang);
         htmlElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
 
@@ -385,17 +391,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (dateInput && timeSlotsContainer) {
-        // Initialize Date
-        const todayStr = new Date().toISOString().split('T')[0];
-        dateInput.min = todayStr;
+        // Initialize Flatpickr
+        const isRTL = htmlElement.getAttribute('dir') === 'rtl';
 
-        if (!dateInput.value) dateInput.value = todayStr;
+        flatpickr(dateInput, {
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            defaultDate: "today",
+            disableMobile: true,
+            locale: isRTL ? 'ar' : 'default',
+            onChange: function (selectedDates, dateStr, instance) {
+                checkAvailability();
+            }
+        });
 
         // Trigger initial check
         checkAvailability();
-
-        // Event Listener
-        dateInput.addEventListener('change', checkAvailability);
     }
 
     // Phone Validation Helper
@@ -465,9 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error("No Internet Connection");
                 }
 
-                // Timeout Controller (15 seconds)
+                // Timeout Controller (45 seconds)
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const timeoutId = setTimeout(() => controller.abort(), 45000);
 
                 const response = await fetch(`${API_BASE_URL}/book-appointment`, {
                     method: 'POST',
@@ -525,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let errorMsg = error.message;
 
                 if (errorMsg === 'Failed to fetch' || errorMsg === 'No Internet Connection') {
-                    errorMsg = lang === 'ar' ? 'فشل الاتصال بالإنترنت. تحقق من الشبكة.' : 'No internet connection. Please check your network.';
+                    errorMsg = lang === 'ar' ? 'تعذر الاتصال بالخادم. يرجى المحاولة مرة أخرى.' : 'Network error or server timeout. Please try again.';
                 } else if (error.name === 'AbortError') {
                     errorMsg = lang === 'ar' ? 'انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.' : 'Request timed out. Please try again.';
                 } else if (errorMsg.includes('Server Error')) {
@@ -545,7 +556,11 @@ document.addEventListener('DOMContentLoaded', () => {
         newBookingBtn.addEventListener('click', () => {
             bookingForm.reset();
             // Reset date to today
-            if (dateInput) dateInput.valueAsDate = new Date();
+            if (dateInput && dateInput._flatpickr) {
+                dateInput._flatpickr.setDate("today");
+            } else if (dateInput) {
+                dateInput.valueAsDate = new Date();
+            }
 
             // Clear slot selection
             timeHiddenInput.value = '';
