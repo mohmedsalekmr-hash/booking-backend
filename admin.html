@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Barber Shop</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css?v=9.0">
+    <style>
+        /* Admin Specific Overrides */
+        .admin-layout {
+            padding-top: calc(var(--header-height) + 2rem);
+            min-height: 100vh;
+        }
+
+        .filter-bar {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .data-table-container {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        [dir="rtl"] .data-table th,
+        [dir="rtl"] .data-table td {
+            text-align: right;
+        }
+
+        .data-table th {
+            background: rgba(0, 0, 0, 0.02);
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        .data-table tr:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-badge.upcoming {
+            background: rgba(46, 204, 113, 0.1);
+            color: #2ecc71;
+        }
+
+        /* Responsive Table */
+        @media (max-width: 768px) {
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="light-mode">
+    <header class="header">
+        <div class="container header-container">
+            <div class="logo">BARBER ADMIN</div>
+            <div class="header-controls">
+                <select id="api-source" class="form-input"
+                    style="width: auto; padding: 6px 12px; margin-right: 12px; font-size: 0.85rem; border-radius: 8px; cursor: pointer;">
+                    <option value="http://localhost:3000">Local (Dev)</option>
+                    <option value="https://booking-backend-3nvh.onrender.com">Live (Prod)</option>
+                </select>
+                <button class="icon-toggle" id="theme-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container admin-layout">
+        <!-- Dashboard Header -->
+        <div class="section-header" style="text-align: left; margin-bottom: 2rem;">
+            <h1 class="section-title">Bookings Dashboard</h1>
+            <p class="section-desc">Manage appointment access and export data.</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <input type="date" id="filter-date" class="form-input" style="width: auto;">
+                <button id="reset-filter" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Show
+                    All</button>
+            </div>
+
+            <button id="export-csv" class="btn btn-primary" style="padding: 0.5rem 1.5rem;">
+                Download CSV
+            </button>
+        </div>
+
+        <!-- Stats/Grid (Optional visual summary) -->
+        <div id="availability-grid" class="time-slots-grid" style="margin-bottom: 2rem; display: none;">
+            <!-- Injected by JS when date is selected -->
+        </div>
+
+        <!-- Table -->
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Customer</th>
+                        <th>Service</th>
+                        <th>Phone</th>
+                    </tr>
+                </thead>
+                <tbody id="bookings-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-secondary);">Loading data...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

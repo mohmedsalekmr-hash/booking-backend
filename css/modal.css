@@ -1,0 +1,77 @@
+/* --- Reminder Modal --- */
+.reminder-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+
+.reminder-content {
+    background: var(--bg-main);
+    padding: 2.5rem;
+    border-radius: 24px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: var(--shadow-hover);
+    border: 1px solid var(--border-color);
+    position: relative;
+}
+
+.reminder-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    animation: bounce 1s infinite alternate;
+}
+
+@keyframes bounce {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-5px);
+    }
+}
+
+.reminder-title {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.reminder-msg {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.reminder-time-display {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border-radius: 12px;
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.reminder-sub {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+[data-theme='dark'] .reminder-content {
+    background: var(--bg-card);
+}

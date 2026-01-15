@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barber App - Premium Grooming</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css?v=8.0">
+</head>
+
+<body class="light-mode">
+    <header class="header">
+        <div class="container header-container">
+            <div class="logo">BARBER</div>
+            <div class="header-controls">
+                <button class="icon-toggle" id="theme-toggle" aria-label="Toggle Theme">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+                <button class="lang-toggle" id="lang-toggle">AR</button>
+                <div class="hamburger" id="menu-toggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Overlay -->
+    <div class="nav-overlay" id="nav-overlay"></div>
+    <nav class="nav-menu" id="nav-menu">
+        <a href="#services" class="nav-link" data-i18n="servicesTitle">Services</a>
+        <a href="#booking" class="nav-link" data-i18n="bookBtn">Book Now</a>
+    </nav>
+
+    <main id="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container hero-container">
+                <div class="hero-content fade-in-up">
+                    <h1 class="hero-title" data-i18n="heroTitle" data-en="Professional Barber Appointments"
+                        data-ar="حجوزات الحلاقة بسهولة">Professional Barber Appointments</h1>
+                    <p class="hero-subtitle" data-i18n="heroSubtitle"
+                        data-en="Book your haircut in advance. No waiting, no stress."
+                        data-ar="احجز موعدك مسبقًا بدون انتظار أو ازدحام">Book your haircut in advance. No waiting, no
+                        stress.</p>
+                    <a href="#booking" class="btn btn-primary" data-i18n="bookBtn" data-en="Book an Appointment"
+                        data-ar="احجز موعدك">Book an Appointment</a>
+                </div>
+                <div class="hero-image fade-in-up delay-200">
+                    <div class="hero-visual">
+                        <!-- Abstract shape handled in CSS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="services section">
+            <div class="container">
+                <div class="section-header fade-in-up">
+                    <h2 class="section-title" data-i18n="servicesTitle" data-en="Our Services" data-ar="خدماتنا">Our
+                        Services</h2>
+                    <p class="section-desc" data-i18n="servicesDesc"
+                        data-en="Premium grooming services tailored for you."
+                        data-ar="خدمات حلاقة متميزة مصممة خصيصًا لك.">Premium grooming services tailored for you.</p>
+                </div>
+                <div class="services-grid">
+                    <!-- Service 1: Haircut -->
+                    <div class="service-card glass-card">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="6" cy="6" r="3"></circle>
+                                <circle cx="6" cy="18" r="3"></circle>
+                                <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                                <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                                <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="service-name" data-i18n="service1Name" data-en="Haircut" data-ar="حلاقة عادية">
+                                Haircut</h3>
+                            <p class="service-price" data-i18n="service1Price" data-en="300 MRU" data-ar="300 أوقية">300
+                                MRU</p>
+                        </div>
+                        <button onclick="selectService('Haircut')" class="btn btn-outline" data-i18n="bookNow"
+                            data-en="Book Now" data-ar="احجز الآن">Book Now</button>
+                    </div>
+
+                    <!-- Service 2: Haircut & Beard -->
+                    <div class="service-card featured glass-card">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 11v-4c0-1.33 2.67-4 5-4s5 2.67 5 4v4"></path>
+                                <path d="M12 22s5-3 5-8v-3h-10v3c0 5 5 8 5 8Z"></path>
+                                <path d="M8 15h8"></path>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="service-name" data-i18n="service2Name" data-en="Haircut & Beard"
+                                data-ar="حلاقة + ذقن">Haircut & Beard</h3>
+                            <p class="service-price" data-i18n="service2Price" data-en="500 MRU" data-ar="500 أوقية">500
+                                MRU</p>
+                        </div>
+                        <button onclick="selectService('Haircut & Beard')" class="btn btn-primary" data-i18n="bookNow"
+                            data-en="Book Now" data-ar="احجز الآن">Book Now</button>
+                    </div>
+
+                    <!-- Service 3: Full Grooming -->
+                    <div class="service-card glass-card">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="service-name" data-i18n="service3Name" data-en="Full Grooming"
+                                data-ar="عناية كاملة">Full Grooming</h3>
+                            <p class="service-price" data-i18n="service3Price" data-en="800 MRU" data-ar="800 أوقية">800
+                                MRU</p>
+                        </div>
+                        <button onclick="selectService('Full Grooming')" class="btn btn-outline" data-i18n="bookNow"
+                            data-en="Book Now" data-ar="احجز الآن">Book Now</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="how-it-works section">
+            <div class="container">
+                <div class="section-header fade-in-up">
+                    <h2 class="section-title" data-i18n="howTitle" data-en="How It Works" data-ar="كيف يعمل">How It
+                        Works</h2>
+                </div>
+                <div class="steps-grid">
+                    <!-- Step 1 -->
+                    <div class="step-card fade-in-up delay-100">
+                        <div class="step-icon">1</div>
+                        <h3 class="step-title" data-i18n="step1Title" data-en="Choose Service" data-ar="اختر الخدمة">
+                            Choose Service</h3>
+                        <p class="step-desc" data-i18n="step1Desc"
+                            data-en="Select the perfect grooming package for you."
+                            data-ar="اختر باقة العناية المناسبة لك.">Select the perfect grooming package for you.</p>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="step-card fade-in-up delay-200">
+                        <div class="step-icon">2</div>
+                        <h3 class="step-title" data-i18n="step2Title" data-en="Select Time" data-ar="حدد الوقت المناسب">
+                            Select Time</h3>
+                        <p class="step-desc" data-i18n="step2Desc"
+                            data-en="Choose a date and time that fits your schedule."
+                            data-ar="اختر التاريخ والوقت الذي يناسب جدولك.">Choose a date and time that fits your
+                            schedule.</p>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="step-card fade-in-up delay-300">
+                        <div class="step-icon">3</div>
+                        <h3 class="step-title" data-i18n="step3Title" data-en="Confirm Booking" data-ar="أكد الحجز">
+                            Confirm Booking</h3>
+                        <p class="step-desc" data-i18n="step3Desc" data-en="Receive confirmation instantly."
+                            data-ar="احصل على تأكيد فوري.">Receive confirmation instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta section">
+            <div class="container cta-container fade-in-up">
+                <div class="cta-content">
+                    <h2 class="cta-title" data-i18n="ctaTitle" data-en="Ready to Look Your Best?"
+                        data-ar="جاهز لمظهر جديد؟">Ready to Look Your Best?</h2>
+                    <p class="cta-desc" data-i18n="ctaDesc"
+                        data-en="Choose your service and book your preferred time in seconds."
+                        data-ar="اختر خدمتك وحدد الوقت المناسب خلال ثوانٍ.">Choose your service and book your preferred
+                        time in seconds.</p>
+                    <a href="#booking" class="btn btn-primary" data-i18n="bookBtn" data-en="Book Your Appointment"
+                        data-ar="احجز موعدك">Book Your Appointment</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Booking Section -->
+        <section id="booking" class="booking section">
+            <div class="container">
+                <div class="section-header fade-in-up">
+                    <h2 class="section-title" data-i18n="bookingTitle" data-en="Book Your Appointment"
+                        data-ar="احجز موعدك">Book Your Appointment</h2>
+                    <p class="section-desc" data-i18n="bookingDesc"
+                        data-en="Fill out the form below to secure your spot."
+                        data-ar="املأ النموذج أدناه لتأكيد حجزك.">Fill out the form below to secure your spot.</p>
+                </div>
+                <!-- Custom Booking Form -->
+                <div class="booking-wrapper fade-in-up delay-200">
+                    <form id="booking-form" class="booking-form">
+                        <div class="form-group">
+                            <label for="name" class="form-label" data-i18n="labelName">Name</label>
+                            <input type="text" id="name" name="name" class="form-input" required placeholder="John Doe">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone" class="form-label" data-i18n="labelPhone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" class="form-input" required
+                                placeholder="12345678">
+                            <span class="error-msg" id="phone-error"
+                                style="display: none; color: #ff4d4d; font-size: 0.85rem; margin-top: 4px;"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="service" class="form-label" data-i18n="labelService">Service</label>
+                            <select id="service" name="service" class="form-input" required>
+                                <option value="" disabled selected data-i18n="optionSelect">Select a service</option>
+                                <option value="Haircut" data-i18n="service1Name">Haircut</option>
+                                <option value="Haircut & Beard" data-i18n="service2Name">Haircut & Beard</option>
+                                <option value="Full Grooming" data-i18n="service3Name">Full Grooming</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="date" class="form-label" data-i18n="labelDate">Preferred Date</label>
+                                <input type="date" id="date" name="date" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="time-slots" class="form-label" data-i18n="labelTime">Preferred Time</label>
+                                <div id="time-slots-container" class="time-slots-grid">
+                                    <!-- Slots injected by JS -->
+                                    <p class="slot-loading">Please select a date first</p>
+                                </div>
+                                <!-- Hidden input to store selected value for submission -->
+                                <input type="hidden" id="time" name="time">
+                            </div>
+                            <!-- Debug Connection Status (Hidden for production, can be enabled for debug) -->
+                            <div id="connection-status"
+                                style="grid-column: 1 / -1; font-size: 0.8rem; color: #666; margin-top: 5px; opacity: 0;">
+                                Backend Status: <span id="status-text">Ready</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="notes" class="form-label" data-i18n="labelNotes">Additional Notes</label>
+                            <textarea id="notes" name="notes" class="form-input" rows="3" placeholder="..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary submit-btn" data-i18n="btnBookNow">Book
+                            Now</button>
+                    </form>
+
+                    <!-- Success Message -->
+                    <div id="booking-success" class="booking-success" style="display: none;">
+                        <div class="success-icon">🎉</div>
+                        <h3 class="success-title" data-i18n="successTitle">Thank you for booking!</h3>
+                        <p class="success-desc" data-i18n="successDesc">We can't wait to see you!</p>
+                        <button id="new-booking-btn" class="btn btn-outline" style="margin-top: 1rem;"
+                            data-i18n="btnBack">Book Another</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-brand">
+                <div class="logo">BARBER</div>
+                <p class="footer-phone" data-i18n="phoneFn" data-en="+222 12 34 56 78" data-ar="+222 12 34 56 78">+222
+                    12 34 56 78</p>
+            </div>
+            <div class="footer-copyright">
+                <div class="copyright-text">
+                    <span data-i18n="rights">All rights reserved.</span> &copy; 2026 BARBER.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Float -->
+    <a href="https://wa.me/22212345678" class="whatsapp-float" target="_blank" aria-label="Chat on WhatsApp">
+        <svg viewBox="0 0 24 24" fill="#fff" width="32" height="32">
+            <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.373-5.251c0-5.457 4.44-9.896 9.897-9.896 2.645 0 5.131 1.03 7.001 2.901a9.824 9.824 0 012.9 6.999c-.004 5.46-4.443 9.897-9.9 9.897" />
+        </svg>
+    </a>
+
+    <!-- Scripts -->
+    <script src="js/script.js?v=7.0"></script>
+</body>
+
+</html>
