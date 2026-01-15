@@ -20,4 +20,8 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log("Registered Routes:");
+    console.log(" - /health");
+    console.log(" - /bookings");
+    console.log(" - /available-slots");
 });

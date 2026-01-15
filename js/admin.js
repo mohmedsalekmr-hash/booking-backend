@@ -101,7 +101,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookingsBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-secondary);">Loading from ${API_BASE_URL}...</td></tr>`;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/bookings`);
+            // Cache-busting to prevent 404 caching from previous deployments
+            const response = await fetch(`${API_BASE_URL}/bookings?_t=${Date.now()}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP Error: ${response.status}`);
@@ -118,16 +119,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error("Fetch Error:", error);
             const isLocal = API_BASE_URL.includes('localhost');
-            const errorMsg = isLocal
-                ? "Is the backend running? (npm start)"
-                : "Have you deployed the latest code?";
+            const targetUrl = `${API_BASE_URL}/bookings`;
+
+            // Try to diagnose if it's just the route or the whole server
+            let healthStatus = "Unknown";
+            try {
+                const h = await fetch(`${API_BASE_URL}/health`);
+                healthStatus = h.status;
+            } catch (e) { healthStatus = "Unreachable"; }
 
             bookingsBody.innerHTML = `
                 <tr>
                     <td colspan="5" style="text-align:center; color: #e74c3c; padding: 2rem;">
                         <strong>Connection Failed</strong><br>
-                        <small>${errorMsg}</small><br>
-                        <small class="monospace" style="opacity: 0.7">${error.message}</small>
+                        <small>Target: ${targetUrl}</small><br>
+                        <small>Status: ${error.message}</small><br>
+                        <small>Server Health: ${healthStatus}</small><br>
+                        <button onclick="fetchBookings()" style="margin-top:1rem; padding:0.5rem 1rem; border:1px solid currentColor; background:transparent; color:inherit; cursor:pointer;">Retry</button>
                     </td>
                 </tr>`;
         }
