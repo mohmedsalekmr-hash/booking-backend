@@ -31,8 +31,8 @@ const getAvailableSlots = (date) => {
 
             if (date === todayStr) {
                 const now = new Date();
-                const currentHour = now.getHours();
-                const currentMin = now.getMinutes();
+                const currentHour = now.getUTCHours();
+                const currentMin = now.getUTCMinutes();
 
                 allSlots = allSlots.filter(slot => {
                     const [slotHour, slotMin] = slot.split(':').map(Number);
