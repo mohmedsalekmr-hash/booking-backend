@@ -54,9 +54,6 @@ const translations = {
         reminderMsg: "You already have a booking for this day at:",
         reminderSub: "We look forward to seeing you!",
         btnGotIt: "Got it",
-        labelConfirmPhone: "Confirm Phone Number",
-        placeholderConfirmPhone: "Re-enter number",
-        errorPhoneMismatch: "Phone numbers do not match.",
         labelRememberMe: "Remember my details"
     },
     ar: {
@@ -113,9 +110,6 @@ const translations = {
         reminderMsg: "لديك حجز مؤكد بالفعل في هذا اليوم الساعة:",
         reminderSub: "نتطلع لرؤيتك!",
         btnGotIt: "حسناً",
-        labelConfirmPhone: "تأكيد رقم الهاتف",
-        placeholderConfirmPhone: "أعد إدخال الرقم",
-        errorPhoneMismatch: "أرقام الهاتف غير متطابقة.",
         labelRememberMe: "تذكر بياناتي"
     }
 };
@@ -170,11 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (savedName && savedPhone) {
         const nameInput = document.getElementById('name');
         const phoneInput = document.getElementById('phone');
-        const confirmInput = document.getElementById('confirm-phone');
 
         if (nameInput) nameInput.value = savedName;
         if (phoneInput) phoneInput.value = savedPhone;
-        if (confirmInput) confirmInput.value = savedPhone;
         if (rememberMeCheckbox) rememberMeCheckbox.checked = true;
     }
 
@@ -251,8 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const elNotes = document.getElementById('notes');
         if (elNotes) elNotes.placeholder = translations[lang].placeholderNotes;
 
-        const elConfirm = document.getElementById('confirm-phone');
-        if (elConfirm) elConfirm.placeholder = translations[lang].placeholderConfirmPhone;
+
 
         // Update Toggle Text
         langToggle.textContent = lang === 'en' ? 'AR' : 'EN';
@@ -445,22 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 phoneError.style.display = 'none';
             }
 
-            // 2.5. Validate Confirm Phone
-            const confirmPhoneInput = document.getElementById('confirm-phone');
-            const confirmPhoneError = document.getElementById('confirm-phone-error');
-            const confirmValue = confirmPhoneInput.value.trim();
 
-            if (confirmValue !== phoneNumber) {
-                confirmPhoneInput.classList.add('input-error');
-                confirmPhoneError.textContent = translations[lang].errorPhoneMismatch;
-                confirmPhoneError.style.display = 'block';
-                setTimeout(() => { confirmPhoneInput.classList.remove('input-error'); }, 500);
-                showToast(lang === 'ar' ? 'تنبيه' : 'Alert', translations[lang].errorPhoneMismatch, 'error');
-                return;
-            } else {
-                confirmPhoneInput.classList.remove('input-error');
-                confirmPhoneError.style.display = 'none';
-            }
 
             // 3. SUBMIT TO BACKEND
             const submitBtn = bookingForm.querySelector('.submit-btn');
