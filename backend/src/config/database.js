@@ -27,6 +27,33 @@ db.serialize(() => {
             console.log('Appointments table ready.');
         }
     });
+
+    // Settings Table
+    db.run(`CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )`, (err) => {
+        if (err) {
+            console.error('Error creating settings table:', err.message);
+            return;
+        }
+        console.log('Settings table ready.');
+
+        // Seed default settings if empty
+        const defaults = {
+            'opening_time': '09:00',
+            'closing_time': '23:00',
+            'break_start': '15:00',
+            'break_end': '16:00',
+            'slot_duration': '60'
+        };
+
+        const insert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+        for (const [key, value] of Object.entries(defaults)) {
+            insert.run(key, value);
+        }
+        insert.finalize();
+    });
 });
 
 module.exports = db;

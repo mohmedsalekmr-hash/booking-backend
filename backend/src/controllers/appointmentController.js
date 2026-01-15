@@ -115,3 +115,6 @@ module.exports = {
     getAvailableSlots,
     bookAppointment,
     getDailyReport,
+    getAllBookings,
+    deleteAppointment
+};

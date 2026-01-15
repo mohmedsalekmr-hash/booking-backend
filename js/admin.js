@@ -1,5 +1,23 @@
-const LOCAL_API = 'http://localhost:3000';
-const LIVE_API = 'https://booking-backend-3nvh.onrender.com';
+// --- CONFIGURATION ---
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000' 
+    : 'https://booking-backend-3nvh.onrender.com';
+
+// --- Helper Functions ---
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function isToday(dateStr) {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear();
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
@@ -12,70 +30,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bodyArgs = document.body.classList;
     const htmlElement = document.documentElement;
 
-    let API_BASE_URL = LOCAL_API; // Default safe fallback
-
-    // --- Backend Auto-Detection ---
-    async function determineBackend() {
-        // Visual indicator that we are determining...
-        if (apiSourceSelect) {
-            apiSourceSelect.style.opacity = '0.5';
-            apiSourceSelect.style.cursor = 'wait';
-        }
-
-        try {
-            console.log("Auto-Detect: Checking Live Backend for /bookings capability...");
-            // Check specifically for the NEW endpoint to ensure code is deployed
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
-
-            const response = await fetch(`${LIVE_API}/bookings`, { method: 'GET', signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (response.ok) {
-                console.log("Auto-Detect: Live Backend has /bookings. Using LIVE.");
-                return LIVE_API;
-            } else if (response.status === 404) {
-                console.log("Auto-Detect: Live Backend online but missing /bookings (Outdated). Fallback to Local.");
-            } else {
-                console.log(`Auto-Detect: Live Backend returned ${response.status}. Fallback to Local.`);
-            }
-        } catch (e) {
-            console.log("Auto-Detect: Live Backend unreachable/error. Fallback to Local.");
-        }
-
-        return LOCAL_API;
-    }
-
-    // Initialize: Always Auto-Detect on load to ensure we switch when Deploy finishes
-    API_BASE_URL = await determineBackend();
-
-    // Save to storage just for consistency, but we overwrite on next load
-    localStorage.setItem('admin_api_source', API_BASE_URL);
-
-    if (apiSourceSelect) {
-        apiSourceSelect.value = API_BASE_URL;
-        apiSourceSelect.style.opacity = '1';
-        apiSourceSelect.style.cursor = 'pointer';
-        updateSourceVisuals(API_BASE_URL);
-
-        apiSourceSelect.addEventListener('change', (e) => {
-            API_BASE_URL = e.target.value;
-            localStorage.setItem('admin_api_source', API_BASE_URL);
-            updateSourceVisuals(API_BASE_URL);
-            fetchBookings();
-        });
-    }
-
-    function updateSourceVisuals(url) {
-        const isLocal = url.includes('localhost');
-        const statusColor = isLocal ? '#f39c12' : '#2ecc71';
-        if (apiSourceSelect) apiSourceSelect.style.borderColor = statusColor;
-    }
-
     // State
     let allBookings = [];
 
-    // --- Theme Logic (Copied for consistency) ---
+    // --- Theme Logic ---
     const savedTheme = localStorage.getItem('theme') || 'light';
     if (savedTheme === 'dark') {
         bodyArgs.add('dark-mode');
@@ -95,10 +53,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // --- API Source Indicator ---
+    if (apiSourceSelect) {
+        apiSourceSelect.value = API_BASE_URL;
+        updateSourceVisuals(API_BASE_URL);
+
+        apiSourceSelect.addEventListener('change', () => {
+             window.location.reload(); 
+        });
+    }
+
+    function updateSourceVisuals(url) {
+        const isLocal = url.includes('localhost');
+        const statusColor = isLocal ? '#f39c12' : '#2ecc71';
+        if (apiSourceSelect) apiSourceSelect.style.borderColor = statusColor;
+    }
+
     // --- Fetch Data ---
     async function fetchBookings() {
         // Show loading state
-        bookingsBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-secondary);">Loading from ${API_BASE_URL}...</td></tr>`;
+        bookingsBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-secondary);">Loading from ${API_BASE_URL}...</td></tr>`;
 
         try {
             // Cache-busting to prevent 404 caching from previous deployments
@@ -130,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             bookingsBody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align:center; color: #e74c3c; padding: 2rem;">
+                    <td colspan="6" style="text-align:center; color: #e74c3c; padding: 2rem;">
                         <strong>Connection Failed</strong><br>
                         <small>Target: ${targetUrl}</small><br>
                         <small>Status: ${error.message}</small><br>
@@ -230,11 +204,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.removeChild(link);
     }
 
-    exportBtn.addEventListener('click', downloadCSV);
+    if (exportBtn) {
+        exportBtn.addEventListener('click', downloadCSV);
+    }
 
     // Initial Load
     fetchBookings();
 });
+
 // --- Delete Booking Logic ---
 window.deleteBooking = async (id) => {
     if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) return;
@@ -247,7 +224,7 @@ window.deleteBooking = async (id) => {
         if (!response.ok) throw new Error('Failed to delete');
 
         alert('Booking deleted successfully');
-        fetchBookings(); // Refresh table
+        window.location.reload(); 
     } catch (error) {
         console.error(error);
         alert('Error deleting booking');
@@ -299,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalOverlay.classList.remove('active');
                 modalOverlay.style.display = 'none';
                 form.reset();
-                fetchBookings(); // Refresh table
+                window.location.reload();
 
             } catch (error) {
                 alert(`Error: ${error.message}`);
