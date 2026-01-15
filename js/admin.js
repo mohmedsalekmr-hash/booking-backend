@@ -146,19 +146,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookingsBody.innerHTML = '';
 
         if (data.length === 0) {
-            bookingsBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No bookings found</td></tr>`;
+            bookingsBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No bookings found</td></tr>`;
             return;
         }
 
+        const today = new Date();
         data.forEach(booking => {
+            const bookingDate = new Date(booking.date);
+            const isUpcoming = bookingDate >= today;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${booking.date}</td>
-                <td><span class="status-badge upcoming">${booking.time}</span></td>
-                <td><strong>${booking.customer_name}</strong></td>
+                <td>${formatDate(booking.date)} <br> <span class="status-badge ${isUpcoming ? 'upcoming' : ''}">${isToday(booking.date) ? 'Today' : ''}</span></td>
+                <td><span style="font-weight: 600; color: var(--gold-primary);">${booking.time}</span></td>
+                <td>${booking.customer_name}</td>
                 <td>${booking.service_name}</td>
-                <td style="font-family: monospace;">${booking.phone_number}</td>
-            `; // Could mask phone number for privacy if needed
+                <td>${booking.phone_number}</td>
+                <td>
+                    <button class="btn btn-outline" onclick="deleteBooking(${booking.id})" style="padding: 4px 8px; font-size: 0.8rem; border-color: #e74c3c; color: #e74c3c;">
+                        Delete
+                    </button>
+                </td>
+            `;
             bookingsBody.appendChild(tr);
         });
     }
@@ -225,4 +234,76 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial Load
     fetchBookings();
+});
+// --- Delete Booking Logic ---
+window.deleteBooking = async (id) => {
+    if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        alert('Booking deleted successfully');
+        fetchBookings(); // Refresh table
+    } catch (error) {
+        console.error(error);
+        alert('Error deleting booking');
+    }
+};
+
+// --- Add Booking Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Modal Elements
+    const modalOverlay = document.getElementById('modal-overlay');
+    const openBtn = document.getElementById('add-booking-btn');
+    const closeBtn = document.getElementById('close-modal');
+    const form = document.getElementById('add-booking-form');
+
+    if (openBtn && modalOverlay) {
+        openBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('active');
+            modalOverlay.style.display = 'block'; // Ensure visibility
+        });
+    }
+
+    if (closeBtn && modalOverlay) {
+        closeBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+            modalOverlay.style.display = 'none';
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const bookingData = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/book-appointment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to book');
+                }
+
+                alert('Booking added successfully!');
+                modalOverlay.classList.remove('active');
+                modalOverlay.style.display = 'none';
+                form.reset();
+                fetchBookings(); // Refresh table
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+    }
 });
