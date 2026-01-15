@@ -302,6 +302,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000);
     }
 
+    // Helper Functions
+    async function checkAvailability() {
+        if (!dateInput || !timeSlotsContainer) return;
+
+        const selectedDate = dateInput.value;
+        const lang = htmlElement.getAttribute('lang') || 'en';
+
+        if (!selectedDate) {
+            timeSlotsContainer.innerHTML = `<p class="slot-loading" data-i18n="msgSelectDate">${translations[lang].msgSelectDate}</p>`;
+            return;
+        }
+
+        // Clear previous selection
+        timeHiddenInput.value = '';
+
+        // Show loading with spinner
+        const loadingText = translations[lang].msgChecking;
+        timeSlotsContainer.innerHTML = `
+            <div class="slot-loading">
+                <div class="spinner slot-spinner"></div>
+                <div style="margin-top: 10px;">${loadingText}</div>
+            </div>
+        `;
+
+        try {
+            // Fetch available slots from backend
+            const response = await fetch(`${API_BASE_URL}/available-slots?date=${selectedDate}`);
+
+            if (!response.ok) {
+                throw new Error(`Server Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            renderSlots(data.availableSlots || [], lang);
+
+        } catch (e) {
+            console.error("Network Error:", e);
+            const errorMsg = lang === 'ar' ? 'فشل الاتصال بالخادم' : 'Connection Failed';
+            timeSlotsContainer.innerHTML = `<p class="slot-loading error">⚠️ ${errorMsg}</p>`;
+            // We don't toast here to avoid spamming user on load, just inline error
+        }
+    }
+
+    function renderSlots(availableSlots, lang) {
+        if (!timeSlotsContainer) return;
+        timeSlotsContainer.innerHTML = '';
+
+        if (availableSlots.length === 0) {
+            timeSlotsContainer.innerHTML = `<p class="slot-loading error" data-i18n="msgFullyBooked">${translations[lang].msgFullyBooked}</p>`;
+            return;
+        }
+
+        TIME_SLOTS.forEach(slot => {
+            const btn = document.createElement('div');
+            btn.classList.add('time-slot');
+            btn.textContent = slot;
+
+            // Check if slot is in available list
+            if (availableSlots.includes(slot)) {
+                // AVAILABLE -> GREEN
+                btn.classList.add('available');
+                btn.onclick = function () {
+                    const allSlots = timeSlotsContainer.querySelectorAll('.time-slot');
+                    allSlots.forEach(el => el.classList.remove('selected'));
+
+                    this.classList.add('selected');
+                    timeHiddenInput.value = slot;
+
+                    // Visual feedback
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => this.style.transform = '', 100);
+                };
+            } else {
+                // UNAVAILABLE -> RED
+                btn.classList.add('booked');
+                btn.title = translations[lang].msgBookedTitle;
+                btn.innerHTML = `<span>${slot}</span>`;
+            }
+            timeSlotsContainer.appendChild(btn);
+        });
+    }
+
     if (dateInput && timeSlotsContainer) {
         // Initialize Date
         const todayStr = new Date().toISOString().split('T')[0];
@@ -314,84 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Event Listener
         dateInput.addEventListener('change', checkAvailability);
-
-        async function checkAvailability() {
-            const selectedDate = dateInput.value;
-            const lang = htmlElement.getAttribute('lang') || 'en';
-
-            if (!selectedDate) {
-                timeSlotsContainer.innerHTML = `<p class="slot-loading" data-i18n="msgSelectDate">${translations[lang].msgSelectDate}</p>`;
-                return;
-            }
-
-            // Clear previous selection
-            timeHiddenInput.value = '';
-
-            // Show loading with spinner
-            const loadingText = translations[lang].msgChecking;
-            timeSlotsContainer.innerHTML = `
-                <div class="slot-loading">
-                    <div class="spinner slot-spinner"></div>
-                    <div style="margin-top: 10px;">${loadingText}</div>
-                </div>
-            `;
-
-            try {
-                // Fetch available slots from backend
-                const response = await fetch(`${API_BASE_URL}/available-slots?date=${selectedDate}`);
-
-                if (!response.ok) {
-                    throw new Error(`Server Error: ${response.status}`);
-                }
-
-                const data = await response.json();
-                renderSlots(data.availableSlots || [], lang);
-
-            } catch (e) {
-                console.error("Network Error:", e);
-                const errorMsg = lang === 'ar' ? 'فشل الاتصال بالخادم' : 'Connection Failed';
-                timeSlotsContainer.innerHTML = `<p class="slot-loading error">⚠️ ${errorMsg}</p>`;
-                // We don't toast here to avoid spamming user on load, just inline error
-            }
-        }
-
-        function renderSlots(availableSlots, lang) {
-            timeSlotsContainer.innerHTML = '';
-
-            if (availableSlots.length === 0) {
-                timeSlotsContainer.innerHTML = `<p class="slot-loading error" data-i18n="msgFullyBooked">${translations[lang].msgFullyBooked}</p>`;
-                return;
-            }
-
-            TIME_SLOTS.forEach(slot => {
-                const btn = document.createElement('div');
-                btn.classList.add('time-slot');
-                btn.textContent = slot;
-
-                // Check if slot is in available list
-                if (availableSlots.includes(slot)) {
-                    // AVAILABLE -> GREEN
-                    btn.classList.add('available');
-                    btn.onclick = function () {
-                        const allSlots = timeSlotsContainer.querySelectorAll('.time-slot');
-                        allSlots.forEach(el => el.classList.remove('selected'));
-
-                        this.classList.add('selected');
-                        timeHiddenInput.value = slot;
-
-                        // Visual feedback
-                        this.style.transform = 'scale(0.95)';
-                        setTimeout(() => this.style.transform = '', 100);
-                    };
-                } else {
-                    // UNAVAILABLE -> RED
-                    btn.classList.add('booked');
-                    btn.title = translations[lang].msgBookedTitle;
-                    btn.innerHTML = `<span>${slot}</span>`;
-                }
-                timeSlotsContainer.appendChild(btn);
-            });
-        }
     }
 
     // Phone Validation Helper
