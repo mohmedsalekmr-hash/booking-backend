@@ -261,10 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://booking-backend-3nvh.onrender.com';
     let slotsCache = {}; // Simple in-memory cache
 
-    const TIME_SLOTS = [
-        "09:00", "10:00", "11:00", "12:00", "13:00", "14:00",
-        "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"
-    ];
+    // const TIME_SLOTS = [ ... ]; // Logic moved to backend dynamic generation
 
     const timeHiddenInput = document.getElementById('time');
     const timeSlotsContainer = document.getElementById('time-slots-container');
@@ -323,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Check Cache
         if (slotsCache[selectedDate]) {
-            renderSlots(slotsCache[selectedDate].availableSlots, slotsCache[selectedDate].breakSlots || [], lang);
+            renderSlots(slotsCache[selectedDate], lang);
             return;
         }
 
@@ -350,12 +347,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             // Update Cache
-            slotsCache[selectedDate] = {
-                availableSlots: data.availableSlots || [],
-                breakSlots: data.breakSlots || []
-            };
+            slotsCache[selectedDate] = data.slots || []; // Store array of {time, status}
 
-            renderSlots(data.availableSlots || [], data.breakSlots || [], lang);
+            renderSlots(data.slots || [], lang);
 
         } catch (e) {
             console.error("Network Error:", e);
@@ -364,26 +358,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderSlots(availableSlots, breakSlots, lang) {
+    function renderSlots(slots, lang) {
         if (!timeSlotsContainer) return;
         timeSlotsContainer.innerHTML = '';
 
-        const isFullyBooked = availableSlots.length === 0;
-        // Don't show fully booked if there are breaks (technically breaks aren't "booked") 
-        // but for user purpose, if no available slots, it is fully booked.
-
-        if (availableSlots.length === 0) {
+        if (!slots || slots.length === 0) {
             timeSlotsContainer.innerHTML = `<p class="slot-loading error" data-i18n="msgFullyBooked">${translations[lang].msgFullyBooked}</p>`;
             return;
         }
 
-        TIME_SLOTS.forEach(slot => {
+        const availableCount = slots.filter(s => s.status === 'available').length;
+        if (availableCount === 0) {
+            // Optional: Show "Fully Booked" message even if breaks/booked slots exist, 
+            // but usually we still want to show the schedule so user knows it's full.
+            // But if ALL slots are booked/break, maybe show message?
+            // Let's just show the grid with red/yellow slots.
+        }
+
+        slots.forEach(slotObj => {
+            const { time, status } = slotObj;
             const btn = document.createElement('div');
             btn.classList.add('time-slot');
-            btn.textContent = slot;
 
-            // Check if slot is in available list
-            if (availableSlots.includes(slot)) {
+            // Format time if needed? "09:00" is fine.
+            btn.innerHTML = `<span>${time}</span>`;
+
+            if (status === 'available') {
                 // AVAILABLE -> GREEN
                 btn.classList.add('available');
                 btn.onclick = function () {
@@ -391,22 +391,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     allSlots.forEach(el => el.classList.remove('selected'));
 
                     this.classList.add('selected');
-                    timeHiddenInput.value = slot;
+                    timeHiddenInput.value = time;
 
                     // Visual feedback
                     this.style.transform = 'scale(0.95)';
                     setTimeout(() => this.style.transform = '', 100);
                 };
-            } else if (breakSlots && breakSlots.includes(slot)) {
+            } else if (status === 'break') {
                 // BREAK -> YELLOW
                 btn.classList.add('break');
                 btn.title = lang === 'ar' ? 'استراحة' : 'Break';
-                btn.innerHTML = `<span>${slot}</span>`;
             } else {
-                // UNAVAILABLE -> RED
+                // BOOKED -> RED
                 btn.classList.add('booked');
                 btn.title = translations[lang].msgBookedTitle;
-                btn.innerHTML = `<span>${slot}</span>`;
             }
             timeSlotsContainer.appendChild(btn);
         });

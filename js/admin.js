@@ -1,6 +1,6 @@
 // --- CONFIGURATION ---
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3000' 
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000'
     : 'https://booking-backend-3nvh.onrender.com';
 
 // --- Helper Functions ---
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateSourceVisuals(API_BASE_URL);
 
         apiSourceSelect.addEventListener('change', () => {
-             window.location.reload(); 
+            window.location.reload();
         });
     }
 
@@ -146,6 +146,85 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsBtn = document.getElementById('settings-btn');
+    const closeSettingsBtn = document.getElementById('close-settings');
+    const settingsForm = document.getElementById('settings-form');
+
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('active');
+            fetchSettings();
+        });
+    }
+
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+        });
+    }
+
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(settingsForm);
+            const data = Object.fromEntries(formData.entries());
+
+            // Basic Validation
+            if (data.opening_time >= data.closing_time) {
+                alert('Closing time must be after opening time.');
+                return;
+            }
+            if (data.break_start >= data.break_end) {
+                alert('Break end time must be after break start time.');
+                return;
+            }
+            if (data.break_start < data.opening_time || data.break_end > data.closing_time) {
+                alert('Break time must be within working hours.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Settings saved successfully!');
+                    settingsModal.classList.remove('active');
+                    // Optional: Reload to apply changes if they affect current view (not really needed for admin table, but good practice)
+                    location.reload();
+                } else {
+                    throw new Error('Failed to save settings');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Error saving settings. Please try again.');
+            }
+        });
+    }
+
+    async function fetchSettings() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`);
+            if (!response.ok) throw new Error('Failed to fetch settings');
+            const settings = await response.json();
+
+            // Populate form
+            for (const [key, value] of Object.entries(settings)) {
+                const input = settingsForm.elements[key];
+                if (input) {
+                    input.value = value;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            alert('Failed to load current settings.');
+        }
+    }
+
     // --- Filter Logic ---
     function filterData() {
         const selectedDate = filterDate.value;
@@ -224,7 +303,7 @@ window.deleteBooking = async (id) => {
         if (!response.ok) throw new Error('Failed to delete');
 
         alert('Booking deleted successfully');
-        window.location.reload(); 
+        window.location.reload();
     } catch (error) {
         console.error(error);
         alert('Error deleting booking');

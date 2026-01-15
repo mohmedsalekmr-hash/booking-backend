@@ -56,16 +56,20 @@ const getAvailableSlots = async (date) => {
             });
         }
 
-        // Identify Break Slots
-        const break_slots = validSlots.filter(slot => slot >= breakStart && slot < breakEnd);
+        // Map to Status Objects
+        const slotsWithStatus = validSlots.map(slot => {
+            let status = 'available';
 
-        // Available = Valid - Booked - Breaks
-        const availableSlots = validSlots.filter(slot =>
-            !bookedTimes.includes(slot) &&
-            !break_slots.includes(slot)
-        );
+            if (bookedTimes.includes(slot)) {
+                status = 'booked';
+            } else if (slot >= breakStart && slot < breakEnd) {
+                status = 'break';
+            }
 
-        return { availableSlots, breakSlots: break_slots, bookedTimes };
+            return { time: slot, status };
+        });
+
+        return { slots: slotsWithStatus };
 
     } catch (error) {
         throw error;
