@@ -14,7 +14,19 @@ async function verify() {
         console.error("Health check failed:", e.message);
     }
 
-    // 2. Bookings Endpoint (The feature we just deployed)
+    // 2. Debug Routes Check
+    try {
+        const resDebug = await fetch(`${BASE_URL}/debug-routes`);
+        console.log(`GET /debug-routes: ${resDebug.status}`);
+        if (resDebug.ok) {
+            const data = await resDebug.json();
+            console.log("Registered Routes:", data.routes);
+        }
+    } catch (e) {
+        console.log("Debug route check failed:", e.message);
+    }
+
+    // 3. Bookings Endpoint
     try {
         const resBookings = await fetch(`${BASE_URL}/bookings`);
         console.log(`GET /bookings: ${resBookings.status} ${resBookings.statusText}`);

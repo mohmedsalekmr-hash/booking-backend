@@ -75,8 +75,19 @@ const getDailyReport = async (req, res) => {
     }
 };
 
+const getAllBookings = async (req, res) => {
+    try {
+        const bookings = await appointmentService.getAllAppointments();
+        res.json({ count: bookings.length, bookings });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getAvailableSlots,
     bookAppointment,
-    getDailyReport
+    getDailyReport,
+    getAllBookings
 };
