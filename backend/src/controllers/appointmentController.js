@@ -91,9 +91,30 @@ const getAllBookings = async (req, res) => {
     }
 };
 
+getAllBookings,
+    deleteAppointment
+};
+
+const deleteAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await appointmentService.deleteAppointment(id);
+
+        if (result.deleted === 0) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
+
+        res.json({ message: 'Appointment deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getAvailableSlots,
     bookAppointment,
     getDailyReport,
-    getAllBookings
+    getAllBookings,
+    deleteAppointment
 };

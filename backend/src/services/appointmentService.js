@@ -133,9 +133,19 @@ const getAllAppointments = () => {
     });
 };
 
+const deleteAppointment = (id) => {
+    return new Promise((resolve, reject) => {
+        db.run('DELETE FROM appointments WHERE id = ?', [id], function (err) {
+            if (err) return reject(err);
+            resolve({ deleted: this.changes });
+        });
+    });
+};
+
 module.exports = {
     getAvailableSlots,
     createAppointment,
+    deleteAppointment,
     getDailyReport,
     getAllAppointments
 };
