@@ -10,7 +10,10 @@ const getAvailableSlots = async (req, res) => {
         }
 
         const result = await appointmentService.getAvailableSlots(date);
-        res.json({ date, availableSlots: result.availableSlots, breakSlots: result.breakSlots });
+        // Service returns { slots: [{time, status}, ...] }
+        // We should just return that directly or map if needed.
+        // The frontend expects a list of slots with status.
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -91,9 +94,7 @@ const getAllBookings = async (req, res) => {
     }
 };
 
-getAllBookings,
-    deleteAppointment
-};
+
 
 const deleteAppointment = async (req, res) => {
     try {

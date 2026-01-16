@@ -1,7 +1,8 @@
 // --- CONFIGURATION ---
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const savedSource = localStorage.getItem('api_source_override');
+const API_BASE_URL = savedSource || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
     ? 'http://localhost:3000'
-    : 'https://booking-backend-3nvh.onrender.com';
+    : 'https://booking-backend-3nvh.onrender.com');
 
 // --- Helper Functions ---
 function formatDate(dateStr) {
@@ -54,11 +55,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- API Source Indicator ---
+    // --- API Source Indicator ---
     if (apiSourceSelect) {
+        // Set initial value based on what was resolved
         apiSourceSelect.value = API_BASE_URL;
         updateSourceVisuals(API_BASE_URL);
 
         apiSourceSelect.addEventListener('change', () => {
+            // Persist selection
+            localStorage.setItem('api_source_override', apiSourceSelect.value);
             window.location.reload();
         });
     }
@@ -171,18 +176,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = Object.fromEntries(formData.entries());
 
             // Basic Validation
-            if (data.opening_time >= data.closing_time) {
-                alert('Closing time must be after opening time.');
+            if (data.opening_time >= data.closing_time && data.closing_time !== '00:00') {
+                alert('Closing time must be after opening time (or 00:00 for midnight).');
                 return;
             }
             if (data.break_start >= data.break_end) {
                 alert('Break end time must be after break start time.');
                 return;
             }
-            if (data.break_start < data.opening_time || data.break_end > data.closing_time) {
-                alert('Break time must be within working hours.');
-                return;
-            }
+            // Removed strict validation for break within working hours to allow custom break slots
+            // if (data.break_start < data.opening_time || data.break_end > data.closing_time) { ... }
 
             try {
                 const response = await fetch(`${API_BASE_URL}/settings`, {
@@ -361,5 +364,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Error: ${error.message}`);
             }
         });
+
+
+        // --- Smart Slot Picker Logic for Admin ---
+        const adminDateInput = form.querySelector('input[name="date"]');
+        const adminTimeHidden = document.getElementById('admin-time-input');
+        const adminSlotsContainer = document.getElementById('admin-time-slots');
+
+        async function checkAdminAvailability() {
+            const selectedDate = adminDateInput.value;
+            if (!selectedDate) {
+                adminSlotsContainer.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:1rem;">Please select a date first</p>';
+                return;
+            }
+
+            adminSlotsContainer.innerHTML = '<p style="text-align:center; padding:1rem;">Checking availability...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/available-slots?date=${selectedDate}`);
+                const data = await response.json();
+                renderAdminSlots(data.slots || []);
+            } catch (error) {
+                console.error(error);
+                adminSlotsContainer.innerHTML = '<p style="text-align:center; color:#e74c3c;">Error fetching slots</p>';
+            }
+        }
+
+        function renderAdminSlots(slots) {
+            adminSlotsContainer.innerHTML = '';
+
+            const availableSlots = slots.filter(s => s.status === 'available');
+
+            if (availableSlots.length === 0) {
+                adminSlotsContainer.innerHTML = '<p style="text-align:center; color:#e74c3c; padding:1rem;">Fully Booked</p>';
+                return;
+            }
+
+            availableSlots.forEach(slot => {
+                const slotEl = document.createElement('div');
+                slotEl.className = 'time-slot available';
+                slotEl.textContent = slot.time;
+
+                slotEl.onclick = () => {
+                    // Remove selected from others
+                    adminSlotsContainer.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
+                    // Add to current
+                    slotEl.classList.add('selected');
+                    // Update hidden input
+                    adminTimeHidden.value = slot.time;
+                };
+
+                adminSlotsContainer.appendChild(slotEl);
+            });
+        }
+
+        if (adminDateInput) {
+            // Set min date to today
+            adminDateInput.min = new Date().toISOString().split('T')[0];
+
+            adminDateInput.addEventListener('change', checkAdminAvailability);
+        }
     }
 });

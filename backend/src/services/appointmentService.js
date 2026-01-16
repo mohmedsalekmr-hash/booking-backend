@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const db = require('../utils/dbAsync');
 const settingsService = require('./settingsService');
 
 // Helper to generate slots
@@ -8,7 +8,12 @@ const generateSlots = (startStr, endStr, durationMins) => {
     const [endH, endM] = endStr.split(':').map(Number);
 
     let current = new Date(2000, 0, 1, startH, startM);
-    const end = new Date(2000, 0, 1, endH, endM);
+    // Handle overnight hours (e.g. 23:00 to 02:00)
+    let end = new Date(2000, 0, 1, endH, endM);
+
+    if (end <= current) {
+        end.setDate(end.getDate() + 1);
+    }
 
     while (current < end) {
         const h = current.getHours().toString().padStart(2, '0');
@@ -21,7 +26,12 @@ const generateSlots = (startStr, endStr, durationMins) => {
 
 const getAvailableSlots = async (date) => {
     try {
+        // settingsService.getSettings is now synchronous but marked as async in export? 
+        // Actually I removed async from getSettings in my previous edit, but let's await it just in case it returns a promise (it doesn't, but safety).
+        // Wait, I made it synchronous. So I can just call it.
+        // However, to avoid breaking if someone changes it back or purely for consistent async flow:
         const settings = await settingsService.getSettings();
+
         const startStr = settings.opening_time || '09:00';
         const endStr = settings.closing_time || '23:00';
         const breakStart = settings.break_start || '15:00';
@@ -32,15 +42,10 @@ const getAvailableSlots = async (date) => {
         const allSlots = generateSlots(startStr, endStr, duration);
 
         // Get Bookings
-        const rows = await new Promise((resolve, reject) => {
-            db.all('SELECT time FROM appointments WHERE date = ?', [date], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-            });
-        });
+        const rows = await db.all('SELECT time FROM appointments WHERE date = ?', [date]);
         const bookedTimes = rows.map(r => r.time);
 
-        // Map Bookings to Intervals (Minutes from Midnight)
+        // Map Bookings to Intervals
         const timeToMins = (t) => {
             const [h, m] = t.split(':').map(Number);
             return h * 60 + m;
@@ -48,39 +53,41 @@ const getAvailableSlots = async (date) => {
 
         const bookingIntervals = bookedTimes.map(t => {
             const start = timeToMins(t);
-            const end = start + duration + prepTime; // Occupies slot + prep
+            const end = start + duration + prepTime;
             return { start, end };
         });
 
-        // Filter Past Time if Today
-        const todayStr = new Date().toISOString().split('T')[0];
+        // Current Server Time Check
+        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+        // Or if we trust the input date format
         let validSlots = allSlots;
 
-        if (date === todayStr) {
-            const now = new Date();
-            const currentHour = now.getUTCHours();
-            const currentMin = now.getUTCMinutes();
-            const currentMins = currentHour * 60 + currentMin;
+        // Simple "is Today" check
+        const now = new Date();
+        const currentIsoDate = now.toLocaleDateString('en-CA');
 
+        if (date === currentIsoDate) {
+            const currentMins = now.getHours() * 60 + now.getMinutes();
             validSlots = validSlots.filter(slot => timeToMins(slot) > currentMins);
         }
 
-        // Map to Status Objects
         const slotsWithStatus = validSlots.map(slot => {
             let status = 'available';
             const slotStart = timeToMins(slot);
-            const slotEnd = slotStart + duration; // Slot occupies its own duration (overlap check)
+            const slotEnd = slotStart + duration;
 
             // 1. Check Break
-            // Break is a fixed range [breakStart, breakEnd)
             const bStart = timeToMins(breakStart);
             const bEnd = timeToMins(breakEnd);
-            // Overlap logic: StartA < EndB && StartB < EndA
-            if (slotStart < bEnd && bStart < slotEnd) {
+
+            // Break logic: if the slot touches the break at all? 
+            // Usually if it starts inside break or ends inside break or encompasses break.
+            // Strict intersection:
+            if (Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd)) {
                 status = 'break';
             }
 
-            // 2. Check Bookings (Collision)
+            // 2. Check Bookings
             if (status !== 'break') {
                 for (const booking of bookingIntervals) {
                     if (slotStart < booking.end && booking.start < slotEnd) {
@@ -100,35 +107,24 @@ const getAvailableSlots = async (date) => {
     }
 };
 
-const checkDoubleBooking = (date, time) => {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT id FROM appointments WHERE date = ? AND time = ?', [date, time], (err, row) => {
-            if (err) return reject(err);
-            resolve(!!row);
-        });
-    });
+const checkDoubleBooking = async (date, time) => {
+    const row = await db.get('SELECT id FROM appointments WHERE date = ? AND time = ?', [date, time]);
+    return !!row;
 };
 
-const checkDailyLimit = (phone, date) => {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT id, time FROM appointments WHERE phone_number = ? AND date = ?', [phone, date], (err, row) => {
-            if (err) return reject(err);
-            resolve(row);
-        });
-    });
+const checkDailyLimit = async (phone, date) => {
+    return await db.get('SELECT id, time FROM appointments WHERE phone_number = ? AND date = ?', [phone, date]);
 };
 
 const createAppointment = async (bookingData) => {
     const { customer_name, phone_number, service_name, date, time } = bookingData;
 
-    // Validate against Settings
     const settings = await settingsService.getSettings();
     const breakStart = settings.break_start || '15:00';
     const breakEnd = settings.break_end || '16:00';
     const duration = parseInt(settings.slot_duration || '60');
     const prepTime = parseInt(settings.preparation_time || '0');
 
-    // Time to Mins Helper
     const timeToMins = (t) => {
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
@@ -140,41 +136,19 @@ const createAppointment = async (bookingData) => {
     // 1. Check Break Collision
     const bStart = timeToMins(breakStart);
     const bEnd = timeToMins(breakEnd);
-    if (bookingStart < bEnd && bStart < bookingEnd) {
+    if (Math.max(bookingStart, bStart) < Math.min(bookingEnd, bEnd)) {
         throw new Error('This time slot overlaps with a break');
     }
 
     // 2. Check Existing Bookings Collision
-    // We need to fetch ALL bookings for the day to check intervals
-    const dayBookings = await new Promise((resolve, reject) => {
-        db.all('SELECT time FROM appointments WHERE date = ?', [date], (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
+    const dayBookings = await db.all('SELECT time FROM appointments WHERE date = ?', [date]);
 
     for (const row of dayBookings) {
         const existingStart = timeToMins(row.time);
-        // Existing booking occupies: [start, start + duration + prep]
-        // Note: We assume all bookings have same duration/prep from current settings. 
-        // Ideally we should store duration per booking, but this is a simplified system.
         const existingEnd = existingStart + duration + prepTime;
-
-        // Check Overlap: StartA < EndB && StartB < EndA
-        // New Booking Interval: [bookingStart, bookingEnd]
-        // Existing Interval: [existingStart, existingEnd]
-
-        // Also need to check if New Booking + Prep overlaps with Existing?
-        // Actually, the buffer is usually "After" the booking. 
-        // So New Booking shouldn't start during Existing+Buffer.
-        // AND Existing shouldn't start during New+Buffer?
-        // Let's assume Buffer is "Cleanup after service". 
-        // So New Booking occupies [Start, Start+Duration+Prep].
-        // Overlap condition:
         const newEndWithPrep = bookingEnd + prepTime;
 
-        // Strict Collision: A.Start < B.End AND B.Start < A.End
-        if (bookingStart < existingEnd && existingStart < newEndWithPrep) { // Check both ways
+        if (bookingStart < existingEnd && existingStart < newEndWithPrep) {
             throw new Error('Time slot overlaps with an existing booking');
         }
     }
@@ -187,49 +161,25 @@ const createAppointment = async (bookingData) => {
         throw error;
     }
 
-    return new Promise((resolve, reject) => {
-        const stmt = db.prepare(`
+    const result = await db.run(`
       INSERT INTO appointments (customer_name, phone_number, service_name, date, time)
       VALUES (?, ?, ?, ?, ?)
-    `);
+    `, [customer_name, phone_number, service_name, date, time]);
 
-        stmt.run([customer_name, phone_number, service_name, date, time], function (err) {
-            stmt.finalize();
-            if (err) return reject(err);
-            resolve({ id: this.lastID, ...bookingData });
-        });
-    });
+    return { id: result.id, ...bookingData };
 };
 
-// Get daily report
-const getDailyReport = (date) => {
-    return new Promise((resolve, reject) => {
-        const query = `SELECT * FROM appointments WHERE date = ? ORDER BY time ASC`;
-        db.all(query, [date], (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows);
-        });
-    });
+const getDailyReport = async (date) => {
+    return await db.all('SELECT * FROM appointments WHERE date = ? ORDER BY time ASC', [date]);
 };
 
-// Get ALL appointments (for Admin)
-const getAllAppointments = () => {
-    return new Promise((resolve, reject) => {
-        const query = `SELECT * FROM appointments ORDER BY date DESC, time ASC`;
-        db.all(query, [], (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows);
-        });
-    });
+const getAllAppointments = async () => {
+    return await db.all('SELECT * FROM appointments ORDER BY date DESC, time ASC');
 };
 
-const deleteAppointment = (id) => {
-    return new Promise((resolve, reject) => {
-        db.run('DELETE FROM appointments WHERE id = ?', [id], function (err) {
-            if (err) return reject(err);
-            resolve({ deleted: this.changes });
-        });
-    });
+const deleteAppointment = async (id) => {
+    const result = await db.run('DELETE FROM appointments WHERE id = ?', [id]);
+    return { deleted: result.changes };
 };
 
 module.exports = {

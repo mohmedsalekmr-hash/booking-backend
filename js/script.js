@@ -258,7 +258,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- CONFIGURATION ---
-    const API_BASE_URL = 'https://booking-backend-3nvh.onrender.com';
+    const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
+        ? 'http://localhost:3000'
+        : 'https://booking-backend-3nvh.onrender.com';
     let slotsCache = {}; // Simple in-memory cache
 
     // const TIME_SLOTS = [ ... ]; // Logic moved to backend dynamic generation
@@ -369,13 +371,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const availableCount = slots.filter(s => s.status === 'available').length;
         if (availableCount === 0) {
-            // Optional: Show "Fully Booked" message even if breaks/booked slots exist, 
-            // but usually we still want to show the schedule so user knows it's full.
-            // But if ALL slots are booked/break, maybe show message?
-            // Let's just show the grid with red/yellow slots.
+            // PHASE 5: Full Booking Day Logic
+            // Show message ONLY IF all valid slots are booked (excluding break time)
+            timeSlotsContainer.innerHTML = `
+                <div class="full-booking-message" style="text-align: center; padding: 2rem; background: rgba(0,0,0,0.03); border-radius: 12px;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">📅</div>
+                    <h3 style="margin-bottom: 0.5rem;" data-i18n="msgFullyBooked">${translations[lang].msgFullyBooked}</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">${lang === 'ar' ? 'نعتذر، جميع المواعيد محجوزة لهذا اليوم.' : 'Apologies, all appointments are booked for this day.'}</p>
+                    <button onclick="document.getElementById('date')._flatpickr.open()" class="btn btn-outline" style="margin-top: 1rem;">
+                        ${lang === 'ar' ? 'اختر يوماً آخر' : 'Choose Another Date'}
+                    </button>
+                </div>
+            `;
+            return;
         }
 
-        slots.forEach(slotObj => {
+        // Filter to show ONLY available slots (Smart Calendar)
+        const availableSlots = slots.filter(s => s.status === 'available');
+
+        availableSlots.forEach(slotObj => {
             const { time, status } = slotObj;
             const btn = document.createElement('div');
             btn.classList.add('time-slot');
