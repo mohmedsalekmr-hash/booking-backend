@@ -1,30 +1,45 @@
 const db = require('../config/database');
 
-const run = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
-            if (err) return reject(err);
-            resolve({ id: this.lastID, changes: this.changes });
-        });
-    });
+// Helper to convert SQLite '?' parameters to PostgreSQL '$1', '$2', etc.
+const convertSql = (sql) => {
+    let i = 0;
+    return sql.replace(/\?/g, () => `$${++i}`);
 };
 
-const get = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) return reject(err);
-            resolve(row);
-        });
-    });
+const run = async (sql, params = []) => {
+    const pgSql = convertSql(sql);
+    try {
+        const result = await db.query(pgSql, params);
+        // Map PG result to SQLite-like result (for compatibility)
+        // insertId is not natively returned unless we use RETURNING id.
+        // For updates, 'changes' -> result.rowCount
+        return {
+            id: result.rows.length > 0 ? result.rows[0].id : null,
+            changes: result.rowCount
+        };
+    } catch (err) {
+        throw err;
+    }
 };
 
-const all = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows);
-        });
-    });
+const get = async (sql, params = []) => {
+    const pgSql = convertSql(sql);
+    try {
+        const result = await db.query(pgSql, params);
+        return result.rows[0];
+    } catch (err) {
+        throw err;
+    }
+};
+
+const all = async (sql, params = []) => {
+    const pgSql = convertSql(sql);
+    try {
+        const result = await db.query(pgSql, params);
+        return result.rows;
+    } catch (err) {
+        throw err;
+    }
 };
 
 module.exports = {

@@ -163,7 +163,7 @@ const createAppointment = async (bookingData) => {
 
     const result = await db.run(`
       INSERT INTO appointments (customer_name, phone_number, service_name, date, time)
-      VALUES (?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?) RETURNING id
     `, [customer_name, phone_number, service_name, date, time]);
 
     return { id: result.id, ...bookingData };
